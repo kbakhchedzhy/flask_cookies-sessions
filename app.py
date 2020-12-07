@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import request, session
+from flask import request, session, make_response
 
 app = Flask(__name__)
 app.secret_key = b'wqorfwqoir3'
@@ -12,23 +12,20 @@ def index():
     :return: info about user and how much he visited page (using sessions)
     """
     visited_counter = 0
-
     if session.get('username'):
         username = session['username']
     else:
         username = 'Аноним'
 
-    if session.get('visited'):
-        visited_counter = session['visited']
-    else:
-        session['visited'] = 0
-
-    session['visited'] += 1
+    if request.cookies.get('visited'):
+        visited_counter = int(request.cookies['visited'])
 
     if visited_counter == 0:
-        return f"Пользовать {username} и зашел первый раз(a)."
-
-    return f"Пользовать {username} и заходил {visited_counter} раз."
+        response = make_response("Пользовать " + username + " и зашел первый раз.")
+    else:
+        response = make_response("Пользовать " + username + " и заходил " + str(visited_counter) + " раз(a).")
+    response.set_cookie('visited', str(visited_counter + 1))
+    return response
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -51,8 +48,9 @@ def login():
     elif request.method == 'POST':
         username = request.form['username']
         session['username'] = username
-        session['visited'] = 0
-        return f"Пользовать вошел в систему как {username}"
+        response = make_response("Пользовать вошел в систему как " + username)
+        response.set_cookie('visited', str(0))
+        return response
 
 
 @app.route('/logout')
@@ -62,8 +60,9 @@ def logout():
     :return: info about logout
     """
     session.pop('username', None)
-    session.pop('visited', None)
-    return f"Пользовать вышел из системы"
+    response = make_response("Пользовать вышел из системы")
+    response.set_cookie('visited', '', 0)
+    return response
 
 
 if __name__ == '__main__':
